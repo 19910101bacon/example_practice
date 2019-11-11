@@ -1,0 +1,1 @@
+{"ticker": "AAPL", "test_error": 0.052, "learn_rate": 0.001, "dropout": 0.25, "epoch": 300, "train_error": 0.0029, "window_size": 7, "target_length": 1, "colname": ["normal_open_", "normal_high", "normal_low", "normal_volume", "normal_close", "normal_returns", "normal_mfi"]}
