@@ -1,0 +1,1 @@
+{"ticker": "IBM", "test_error": 0.0121, "learn_rate": 0.0005, "dropout": 0.4, "epoch": 200, "train_error": 0.0111, "window_size": 2, "target_length": 1, "colname": ["normal_open_", "normal_high", "normal_low", "normal_volume", "normal_close", "normal_close_delta_1", "normal_close_delta_2", "normal_close_delta_3", "normal_returns", "normal_mfi"]}

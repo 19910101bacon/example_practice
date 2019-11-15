@@ -8,7 +8,9 @@ stocks = companies()
 index = int(sys.argv[1])
 
 symbol = sys.argv[2]
+#symbols = stocks[stocks.Industry == 'Technology']['Symbol'].values.tolist()
 symbols = stocks['Symbol'].values.tolist()
+print(symbols)
 other_symbols = [symbol_tem for symbol_tem in symbols if symbol_tem != symbol]
 
 target_length = int(sys.argv[3])
@@ -45,20 +47,20 @@ print('------ have {0} combinations ------'.format(str(len(all_combination))))
 
 # all_combination.append(base_columns)
 if index == 0:
-    window_sizes = [1,2,3,4] 
-    dropouts =  [0.4]
-    learn_rates = [0.0005,0.00001]
-    epochs = [100,200,300,500]
-    batch_size = 100
+    window_sizes = [2,3,4,5] 
+    dropouts =  [0.1]
+    learn_rates = [0.00005,0.0001]
+    epochs = [10,30,50,100]
+    batch_size = 50
 else:
-    window_sizes = [1,2,3,4] 
-    dropouts =  [0.4]
-    learn_rates = [0.0005,0.00001]
-    epochs = [50,100,250,400]
-    batch_size = 100
+    window_sizes = [2,3,4,5] 
+    dropouts =  [0.1]
+    learn_rates = [0.0005,0.0001]
+    epochs = [10,30,50,100]
+    batch_size = 50
 
 print(all_combination[index])
-result = model_selector(symbols[2], window_sizes, learn_rates, dropouts, epochs, batch_size,target_length=target_length,all_day=False,verbose=1,column=all_combination[index])
+result = model_selector(symbol, window_sizes, learn_rates, dropouts, epochs, batch_size,target_length=target_length,target_theme='g000',verbose=1,column=all_combination[index])
 
 print("\nResults : ")
 print("-"*60)

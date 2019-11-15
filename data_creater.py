@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from itertools import chain
 import operator
+from datetime import datetime, date
 
 def companies():
     dataset = pd.read_csv(os.path.join("data","dow30.csv"))
@@ -152,6 +153,7 @@ class Feature_Selection(BaseData):
         return self.__data[col_Name].iloc[self.__days:].values.flatten()
 
     def normalize_data(self):
+        scaler = MinMaxScaler(feature_range=(-1,1))
         index = self.__data.index.values[self.__days:]
         table = OrderedDict()
         table['date'] = self.__flatten_data('Date')
@@ -159,23 +161,56 @@ class Feature_Selection(BaseData):
         table['high'] = self.__flatten_data('High')
         table['low'] = self.__flatten_data('Low')
         table['volume'] = self.__flatten_data('Volume')
-        table['close'] = self.__flatten_data('Adj Close')
-        table['close_delta_1'] = [0] + list(map(operator.sub, self.__flatten_data('Adj Close')[1:], self.__flatten_data('Adj Close')[:-1]))   
-        table['close_delta_2'] = [0,0] + list(map(operator.sub, self.__flatten_data('Adj Close')[2:], self.__flatten_data('Adj Close')[:-1]))   
-        table['close_delta_3'] = [0,0,0] + list(map(operator.sub, self.__flatten_data('Adj Close')[3:], self.__flatten_data('Adj Close')[:-1]))   
+        table['close'] = self.__flatten_data('Adj Close') 
         table['returns'] = self.__flatten_data('Adj Close_log_returns')
         table['mfi'] = self.__flatten_data('mfi_index')
-        table['normal_open_'] = self.__scale_data('Open')
-        table['normal_high'] = self.__scale_data('High')
-        table['normal_low'] = self.__scale_data('Low')
+        table['close_diff_day1'] = [0] + list(map(operator.sub, self.__flatten_data('Adj Close')[1:], self.__flatten_data('Adj Close')[:-1])) 
+        table['close_diff_day2'] = [0,0] + list(map(operator.sub, self.__flatten_data('Adj Close')[2:], self.__flatten_data('Adj Close')[:-2]))   
+        table['close_diff_day3'] = [0,0,0] + list(map(operator.sub, self.__flatten_data('Adj Close')[3:], self.__flatten_data('Adj Close')[:-3]))   
+#         table['normal_open_'] = self.__scale_data('Open')
+#         table['normal_high'] = self.__scale_data('High')
+#         table['normal_low'] = self.__scale_data('Low')
+        table['normal_amplitude'] = scaler.fit_transform(np.reshape(table['high'] - table['low'], (-1,1))).flatten()
         table['normal_volume'] = self.__scale_data('Volume')
         table['normal_close'] = self.__scale_data('Adj Close')
-        table['normal_close_delta_1'] = [0] + list(map(operator.sub, self.__scale_data('Adj Close')[1:], self.__scale_data('Adj Close')[:-1]))   
-        table['normal_close_delta_2'] = [0,0] + list(map(operator.sub, self.__scale_data('Adj Close')[2:], self.__scale_data('Adj Close')[:-1]))   
-        table['normal_close_delta_3'] = [0,0,0] + list(map(operator.sub, self.__scale_data('Adj Close')[3:], self.__scale_data('Adj Close')[:-1]))   
+        table['normal_close_diff_day1'] = scaler.fit_transform(np.reshape(table['close_diff_day1'], (-1,1))).flatten()
+        table['normal_close_diff_day2'] = scaler.fit_transform(np.reshape(table['close_diff_day2'], (-1,1))).flatten()
+        table['normal_close_diff_day3'] = scaler.fit_transform(np.reshape(table['close_diff_day3'], (-1,1))).flatten()
+        
         table['normal_returns'] = self.__scale_data('Adj Close_log_returns')
         table['normal_mfi'] = self.__scale_data('mfi_index')
+        table['normal_weekday'] = [datetime.utcfromtimestamp(date_.astype(int) * 1e-9).weekday()  + 1 for date_ in table['date']]
+            
+        table['rate_day1'] = [1] + list(map(operator.truediv, table['close_diff_day1'][1:], table['close'][:-1]))
+        table['rate_day2'] = [1,1] + list(map(operator.truediv, table['close_diff_day2'][2:], table['close'][:-2]))
+        table['rate_day3'] = [1,1,1] + list(map(operator.truediv, table['close_diff_day3'][3:], table['close'][:-3]))
+    
+#         print(len(table['date']))
+#         print(len(table['normal_close_diff_day3']))
         self.__data_normal = pd.DataFrame(table,index=index)
+#         print(self.__data_normal)
+
+        
+        self.__data_normal['bummpy_day1_g000'] = np.where(self.__data_normal['rate_day1'] > 0, 1, 0)
+        self.__data_normal['bummpy_day1_g0005'] = np.where(self.__data_normal['rate_day1'] > 0.005, 1, 0)
+        self.__data_normal['bummpy_day1_g001'] = np.where(self.__data_normal['rate_day1'] > 0.01, 1, 0)
+        self.__data_normal['bummpy_day1_g002'] = np.where(self.__data_normal['rate_day1'] > 0.02, 1, 0)
+        self.__data_normal['bummpy_day1_g003'] = np.where(self.__data_normal['rate_day1'] > 0.03, 1, 0)
+        self.__data_normal['bummpy_day1_s000'] = np.where(self.__data_normal['rate_day1'] < 0, 1, 0)
+        self.__data_normal['bummpy_day1_s0005'] = np.where(self.__data_normal['rate_day1'] < -0.005, 1, 0)
+        self.__data_normal['bummpy_day1_s001'] = np.where(self.__data_normal['rate_day1'] < -0.01, 1, 0)
+        self.__data_normal['bummpy_day1_s002'] = np.where(self.__data_normal['rate_day1'] < -0.02, 1, 0)
+        self.__data_normal['bummpy_day1_s003'] = np.where(self.__data_normal['rate_day1'] < -0.03, 1, 0)
+        self.__data_normal['bummpy_day2_g000'] = np.where(self.__data_normal['rate_day2'] > 0, 1, 0)
+        self.__data_normal['bummpy_day2_g0005'] = np.where(self.__data_normal['rate_day2'] > 0.005, 1, 0)
+        self.__data_normal['bummpy_day2_g001'] = np.where(self.__data_normal['rate_day2'] > 0.01, 1, 0)
+        self.__data_normal['bummpy_day2_g002'] = np.where(self.__data_normal['rate_day2'] > 0.02, 1, 0)
+        self.__data_normal['bummpy_day2_g003'] = np.where(self.__data_normal['rate_day2'] > 0.03, 1, 0)
+        self.__data_normal['bummpy_day2_s000'] = np.where(self.__data_normal['rate_day2'] < 0, 1, 0)
+        self.__data_normal['bummpy_day2_s0005'] = np.where(self.__data_normal['rate_day2'] < -0.005, 1, 0)
+        self.__data_normal['bummpy_day2_s001'] = np.where(self.__data_normal['rate_day2'] < -0.01, 1, 0)
+        self.__data_normal['bummpy_day2_s002'] = np.where(self.__data_normal['rate_day2'] < -0.02, 1, 0)
+        self.__data_normal['bummpy_day2_s003'] = np.where(self.__data_normal['rate_day2'] < -0.03, 1, 0)
         self.__data_normal.index.name = 'index'
 
     def __cal_log_return(self,col_name:str):
@@ -235,14 +270,13 @@ class Volatility(object):
         return self.__volatility
 
 class SequenceBase(ABC):
-    def __init__(self,symbol:str,window_size:int,target_length:int,all_day:bool,column:list):
+    def __init__(self,symbol:str,window_size:int,target_length:int,target_theme:str,column:list):
         try:
             self.__window_size = window_size
-            self.__all_day = all_day
             self.__target_length = target_length
+            self.__target_name = 'bummpy_day{0}_{1}'.format(str(target_length),target_theme)
+            select_column = [self.__target_name, 'close', 'date'] + column
             path_norm_data = "./data/{}/all_normalized.csv".format(symbol)
-            select_column = ['date', 'open', 'high', 'low', 'volume', 'close' ,'returns', 'mfi', 'close_delta_1', 'close_delta_2', 'close_delta_3']
-            select_column = select_column + column
             df = pd.read_csv(path_norm_data).loc[3:,:].reset_index(drop=True)
             self.__data_normal = df[[c for c in df.columns if c in select_column]]
         except:
@@ -250,20 +284,15 @@ class SequenceBase(ABC):
     
     @property
     def data(self):
-        return self.__data_normal
+        return self.__data_normal.drop(columns=['close', 'date',self.__target_name])
 
     @property
-    def original_data(self):
-         return self.__data_normal['close'].values
-#         return self.__data_normal['normal_close_delta_' + str(self.__target_length)].values
+    def ans(self):
+         return self.__data_normal[self.__target_name].values
     
     @property
     def all_date(self):
         return self.__data_normal['date'].values
-    
-    @property
-    def all_day(self):
-        return self.__all_day
 
     @property
     def window_size(self):
@@ -284,19 +313,20 @@ class SequenceBase(ABC):
         pass
 
 class SimpleSequence(SequenceBase):
-    def __init__(self,symbol:str,window_size:int,target_length:int,all_day:bool,column:list):
-        SequenceBase.__init__(self,symbol,window_size,target_length,all_day,column)
+    def __init__(self,symbol:str,window_size:int,target_length:int,target_theme:str,column:list):
+        SequenceBase.__init__(self,symbol,window_size,target_length,target_theme,column)
         self.__sequence_data()
     
     def __sequence_data(self):
-        close = self.data['normal_close'].values
+        data = self.data
+        true_ans = self.ans
         X=[]
         y=[]
         pointer = 0
         data_length = len(close)
         while (pointer+self.window_size+self.target_length)<=data_length:
-            X.append(close[pointer:pointer+self.window_size])
-            y.append(close[pointer+self.window_size:pointer+self.window_size+self.target_length])
+            X.append(data[pointer:pointer+self.window_size])
+            y.append(true_ans[pointer+self.window_size:pointer+self.window_size+self.target_length])
             pointer+=1
         self.__X = np.asarray(X)
         self.__X = self.__X.reshape((-1,self.__X.shape[-1],1))
@@ -311,42 +341,33 @@ class SimpleSequence(SequenceBase):
         return self.__y
 
 class MultiSequence(SequenceBase):
-    def __init__(self,symbol:str, window_size:int, target_length:int,all_day:bool,column:list):
-        SequenceBase.__init__(self,symbol, window_size, target_length,all_day,column)
+    def __init__(self,symbol:str,window_size:int,target_length:int,target_theme:str,column:list):
+        SequenceBase.__init__(self,symbol, window_size, target_length,target_theme,column)
         self.__sequence_data()
 
     def __sequence_data(self):
-        dates =self.data['date'].values   
-#         open_ = self.data['normal_open_'].values  
-#         high = self.data['normal_high'].values  
-#         low = self.data['normal_low'].values  
-#         volume = self.data['normal_volume'].values  
-        normal_close_delta = self.data['normal_close_delta_' + str(self.target_length)].values  
-#         close = self.data['normal_close'].values  
-#         returns = self.data['normal_returns'].values
-#         mfi = self.data['normal_mfi'].values
+        dates = self.all_date
+        data = self.data
+        true_ans = self.ans
+        
         X = []
         Xpred = []
         y = []
         date_ = []
         pointer = 0
-        data_length = len(normal_close_delta)
+        data_length = len(true_ans)
         while (pointer + self.window_size) <= data_length:
             if (pointer + self.window_size + self.target_length) <= data_length:
-                part_data = self.data.loc[pointer:pointer + self.window_size - 1,].drop(columns=['date', 'open', 'high', 'low', 'volume', 'close' ,'returns', 'mfi', 'close_delta_1', 'close_delta_2', 'close_delta_3'])
-#                 part_data_value = np.array([list(chain(*part_data.values.tolist()))]) 
+                part_data = data.loc[pointer:pointer + self.window_size - 1,] 
+#                 part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
                 part_data_value = part_data.values
                 X.append(part_data_value)
 
-                if(self.all_day is True):
-                
-                    y.append(normal_close_delta[pointer+self.window_size:pointer+self.window_size+self.target_length])
-                else:
-                    y.append(normal_close_delta[pointer+self.window_size+self.target_length-1:pointer+self.window_size+self.target_length])
+                y.append(true_ans[pointer+self.window_size+self.target_length-1:pointer+self.window_size+self.target_length])
                 
             if (pointer + self.window_size) <= data_length:
-                part_data = self.data.loc[pointer:pointer + self.window_size - 1,].drop(columns=['date', 'open', 'high', 'low', 'volume', 'close' ,'returns', 'mfi', 'close_delta_1', 'close_delta_2', 'close_delta_3'])
-#                 part_data_value = np.array([list(chain(*part_data.values.tolist()))]) 
+                part_data = data.loc[pointer:pointer + self.window_size - 1,] 
+#                 part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
                 part_data_value = part_data.values
                 Xpred.append(part_data_value)
                 date_.append(dates[pointer + self.window_size - 1])
