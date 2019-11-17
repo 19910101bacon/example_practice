@@ -15,15 +15,16 @@ import time
 import operator
 
 class Predictor(object):
-    def __init__(self,symbol:str,target_length:int):
+    def __init__(self,symbol:str,target_length:int,target_theme:str):
         self.__symbol = symbol
         file_loc = "./data/{0:}/all_normalized.csv".format(self.__symbol)
         if os.path.isfile(file_loc):
             data = pd.read_csv(file_loc).loc[3:,:].reset_index(drop=True)
-            self.__closing_prices = data["close_delta_" + str(target_length)].values
+            self.__closing_prices = data["close"].values
             self.__max_price = max(self.__closing_prices)
             self.__min_price = min(self.__closing_prices)
             self.__target_length = target_length
+            self.__target_theme = target_theme
         else:
             print("File does not exist : ",file_loc)
     
@@ -46,65 +47,69 @@ class Predictor(object):
             print("File does not exist : ",file_path.format(symbol))
 
     def select_model(self,verbose=0):
-        tickers = []
-#         tickers_tem = [x.split('/')[2] for x,_,_ in os.walk('./model') if len(x.split('/')) > 2]
-#         print(tickers_tem)
-#         for ticker_tem in tickers_tem:
-#             if ticker_tem != self.__symbol:
-#                 continue
-#             check = ['yes' for _,_,items in os.walk('./model/' + ticker_tem) for item in items if bool(search(ticker_tem + str(self.__target_length), item))] 
-#             if len(check) > 0:
-#                 tickers.append(ticker_tem)
-        tickers = tickers + [self.__symbol]
-        print(tickers)
-        
-        best_model = None
-        lowest_test_error = 2.0
-        for idx,ticker in enumerate(tickers,1):
-            __prop_path = "./model/{0}/{1:}_train_props.json"
-            with open(__prop_path.format(ticker, ticker+str(self.__target_length)), 'r') as json_file:
+        __prop_path = "./model/{0}/{1}_{2}_train_props.json"
+        with open(__prop_path.format(self.__symbol, self.__symbol+str(self.__target_length), self.__target_theme), 'r') as json_file:
                 loaded_model_json = json_file.read()
                 loaded_model_json = json.loads(loaded_model_json)
                 colname = loaded_model_json['colname']
-            try:
-                loaded_model = ModelLoader(ticker, self.__target_length)
-                seq_obj = MultiSequence(self.symbol,loaded_model.window_size,self.__target_length,all_day=False,column=colname)
-                testing_error = loaded_model.model.evaluate(seq_obj.X,seq_obj.y, verbose=0)
-                if verbose==1:
-                    print(">{0:>3}) Now checking model: {1:<5}  Test error result: {2:.4f}".format(idx,ticker, testing_error))
-                if lowest_test_error > testing_error:
-                    best_model = loaded_model
-                    lowest_test_error = testing_error
-            except:
-                pass
-        self.__best_model = best_model
-        self.__test_error = lowest_test_error
-        if verbose in [1,2]:
-            print("==> Best model ticker {0:} with error of {1:.4f}".format(self.__best_model.ticker,self.__test_error))
+                
+        loaded_model = ModelLoader(self.__symbol, self.__target_length, self.__target_theme)
+        seq_obj = MultiSequence(self.__symbol,loaded_model.window_size,self.__target_length,self.__target_theme,column=colname)
+        testing_result = loaded_model.model.evaluate(seq_obj.X,seq_obj.y, verbose=0)
+#         print("> Now checking model: {0:<5}  Test loss result: {1:.4f} Test accuracy result: {2:.4f}".format(self.__symbol, testing_result[0], testing_result[1]))
+        self.__best_model = loaded_model
+#         self.__loss = testing_result[0]   
+        self.__accuracy = testing_result 
+        print("==> Model ticker {0:} with accuracy of {1:.4f}".format(self.__symbol, self.__accuracy))
+
+#         tickers = []
+#         tickers = tickers + [self.__symbol]
+#         print(tickers)
+        
+#         best_model = None
+#         lowest_test_error = 2.0
+#         for idx,ticker in enumerate(tickers,1):
+#             __prop_path = "./model/{0}/{1:}_train_props.json"
+#             with open(__prop_path.format(ticker, ticker+str(self.__target_length)), 'r') as json_file:
+#                 loaded_model_json = json_file.read()
+#                 loaded_model_json = json.loads(loaded_model_json)
+#                 colname = loaded_model_json['colname']
+#             try:
+#                 loaded_model = ModelLoader(ticker, self.__target_length)
+#                 seq_obj = MultiSequence(self.symbol,loaded_model.window_size,self.__target_length,all_day=False,column=colname)
+#                 testing_error = loaded_model.model.evaluate(seq_obj.X,seq_obj.y, verbose=0)
+#                 if verbose==1:
+#                     print(">{0:>3}) Now checking model: {1:<5}  Test error result: {2:.4f}".format(idx,ticker, testing_error))
+#                 if lowest_test_error > testing_error:
+#                     best_model = loaded_model
+#                     lowest_test_error = testing_error
+#             except:
+#                 pass
+#         self.__best_model = best_model
+#         self.__test_error = lowest_test_error
+#         if verbose in [1,2]:
+#             print("==> Best model ticker {0:} with error of {1:.4f}".format(self.__best_model.ticker,self.__test_error))
     
-    def db_return(self, index=0):
-        __prop_path = "./model/{0}/{1:}_train_props.json"
-        with open(__prop_path.format(self.symbol, self.symbol+str(self.__target_length)), 'r') as json_file:
+    def db_return(self):
+        __prop_path = "./model/{0}/{1}_{2}_train_props.json"
+        with open(__prop_path.format(self.symbol, self.symbol+str(self.__target_length), self.__target_theme), 'r') as json_file:
             loaded_model_json = json_file.read()
             loaded_model_json = json.loads(loaded_model_json)
             colname = loaded_model_json['colname']
             
-        seq_obj = MultiSequence(self.symbol, self.__best_model.window_size,self.__target_length,all_day=False,column=colname)
-        scaler = MinMaxScaler(feature_range=(self.__min_price ,self.__max_price))
-        orig_data = seq_obj.original_data.reshape(-1,1)
-        orig_prices = orig_data
-#         orig_prices = scaler.fit_transform(orig_data).flatten()
-        
-        test_predict = self.__best_model.model.predict(seq_obj.Xpred)
+        seq_obj = MultiSequence(self.symbol, self.__best_model.window_size,self.__target_length,self.__target_theme,column=colname)
+        orig_prices = seq_obj.origin_close
+        orig_date = seq_obj.all_date
+        ans = seq_obj.ans
+        orig_price_df = pd.DataFrame.from_dict({'date': orig_date, 'close_price': orig_prices, 'ans': ans})
+        orig_price_df.index = range(len(orig_price_df))
 
-        pred_prices = scaler.fit_transform(test_predict) 
-        pred_close = pd.DataFrame(pred_prices, columns = ['y' + str(self.__target_length)])
-        pred_close['close'] = orig_prices[self.__best_model.window_size-1:]
-        pred_close['y' + str(self.__target_length)] =  pred_close['y' + str(self.__target_length)] + pred_close['close'] 
-        pred_close = pred_close.set_index(seq_obj.date)     
-        row_number = pred_close.shape[0]
-        plot_table = pred_close.iloc[row_number+1-index-10:row_number+1-index]
-        return plot_table
+        predict_prob = self.__best_model.model.predict(seq_obj.Xpred)
+        pred_prob_df = pd.DataFrame(predict_prob, columns = [self.symbol+str(self.__target_length) + '_' + self.__target_theme])
+        pred_prob_df.index = range(self.__target_length + self.__best_model.window_size - 1, len(pred_prob_df) + self.__target_length + self.__best_model.window_size - 1)  
+        df = orig_price_df.merge(pred_prob_df, how = 'outer', left_index=True, right_index=True)
+        display(df)
+        return df
      
     def graph_forcast(self):
         seq_obj = MultiSequence(self.symbol, self.__best_model.window_size,5)
@@ -316,7 +321,7 @@ class ModelLoader(object):
     __step_prop_path = "./model_step/{0}/{1}_{2}_train_props.json"
 
     def __init__(self,symbol: str,target_length:int, target_theme:str):
-        try:         
+#         try:         
             if not os.path.isfile(ModelLoader.__model_path.format(symbol, symbol+str(target_length), target_theme)):
                 print("No model exist for {}".format(symbol))
                 return
@@ -331,16 +336,16 @@ class ModelLoader(object):
                 loaded_model_json = json_file.read()
                 loaded_model = model_from_json(loaded_model_json)
                 loaded_model.load_weights(ModelLoader.__weights_path.format(symbol, symbol+str(target_length), target_theme))
-                optimizer = RMSprop(lr=loaded_model_json['learn_rate'])
-                loaded_model.compile(loss='binary_crossentropy',optimizer=optimizer)
+#                 optimizer = RMSprop(lr=loaded_model_json['learn_rate'])
+                loaded_model.compile(loss='binary_crossentropy',optimizer='rmsprop')
 #                 loaded_model.compile(loss='mean_squared_error', optimizer='rmsprop')
                 self.__model = loaded_model
             with open(ModelLoader.__prop_path.format(symbol, symbol+str(target_length), target_theme), 'r') as prop_file:
                 self.__train_prop = json.load(prop_file)
-        except OSError as err:
-            print("OS error for symbol {}: {}".format(symbol, err))
-        except:
-            print("Unexpected error for symbol {}:{}".format(symbol, sys.exc_info()[0]))        
+#         except OSError as err:
+#             print("OS error for symbol {}: {}".format(symbol, err))
+#         except:
+#             print("Unexpected error for symbol {}:{}".format(symbol, sys.exc_info()[0]))        
 
 
     @staticmethod

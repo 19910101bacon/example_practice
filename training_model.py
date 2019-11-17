@@ -10,10 +10,17 @@ index = int(sys.argv[1])
 symbol = sys.argv[2]
 #symbols = stocks[stocks.Industry == 'Technology']['Symbol'].values.tolist()
 symbols = stocks['Symbol'].values.tolist()
-print(symbols)
+
+if os.path.isfile('./data/{0}/important_symbol.json'.format(symbol)):
+    with open('./data/{0}/important_symbol.json'.format(symbol), 'r') as json_file:
+        loaded_model_json = json_file.read()
+        loaded_model_json = json.loads(loaded_model_json)
+        symbols = list(loaded_model_json['score'].keys())
+
 other_symbols = [symbol_tem for symbol_tem in symbols if symbol_tem != symbol]
 
 target_length = int(sys.argv[3])
+target_theme = sys.argv[4]
 
 df = pd.read_csv('./data/{0}/all_normalized.csv'.format(symbol), index_col=[0], parse_dates=[0])
 symbol_columns = [symbol_tem for symbol_tem in list(df.columns.values) if bool(re.match('normal.*', symbol_tem))]
@@ -60,7 +67,7 @@ else:
     batch_size = 50
 
 print(all_combination[index])
-result = model_selector(symbol, window_sizes, learn_rates, dropouts, epochs, batch_size,target_length=target_length,target_theme='g000',verbose=1,column=all_combination[index])
+result = model_selector(symbol, window_sizes, learn_rates, dropouts, epochs, batch_size,target_length=target_length,target_theme=target_theme,verbose=1,column=all_combination[index])
 
 print("\nResults : ")
 print("-"*60)

@@ -287,6 +287,10 @@ class SequenceBase(ABC):
         return self.__data_normal.drop(columns=['close', 'date',self.__target_name])
 
     @property
+    def origin_close(self):
+         return self.__data_normal['close'].values
+        
+    @property
     def ans(self):
          return self.__data_normal[self.__target_name].values
     
