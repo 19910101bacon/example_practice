@@ -48,7 +48,7 @@ class BaseData(object):
 
 class Downloader(BaseData):
     def __init__(self,symbol:str,start_date:str, end_date:str):
-        try:
+#         try:
             BaseData.__init__(self,symbol)
             self.__start_date = datetime.strptime(start_date,'%Y%m%d')
             self.__end_date = datetime.strptime(end_date,'%Y%m%d')
@@ -72,8 +72,8 @@ class Downloader(BaseData):
                     table.append(d)
             self.__data = pd.DataFrame(table)
             self.__size = len(self.__data)
-        except OSError as err:
-            print("OS error for symbol {} : {}".format(symbol,err))
+#         except OSError as err:
+#             print("OS error for symbol {} : {}".format(symbol,err))
     
     def save(self):
         file_dir = os.path.join("./data",self.symbol)
@@ -279,6 +279,7 @@ class SequenceBase(ABC):
             path_norm_data = "./data/{}/all_normalized.csv".format(symbol)
             df = pd.read_csv(path_norm_data).loc[3:,:].reset_index(drop=True)
             self.__data_normal = df[[c for c in df.columns if c in select_column]]
+            self.__rate = df['rate_day' + str(target_length)]
         except:
             print("Unexpected error for symbol {} : {}".format(symbol,sys.exc_info()[0]))
     
@@ -293,6 +294,11 @@ class SequenceBase(ABC):
     @property
     def ans(self):
          return self.__data_normal[self.__target_name].values
+        
+    @property
+    def rate(self):
+         return self.__rate
+
     
     @property
     def all_date(self):
@@ -363,16 +369,16 @@ class MultiSequence(SequenceBase):
         while (pointer + self.window_size) <= data_length:
             if (pointer + self.window_size + self.target_length) <= data_length:
                 part_data = data.loc[pointer:pointer + self.window_size - 1,] 
-#                 part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
-                part_data_value = part_data.values
+                part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
+#                 part_data_value = part_data.values
                 X.append(part_data_value)
 
                 y.append(true_ans[pointer+self.window_size+self.target_length-1:pointer+self.window_size+self.target_length])
                 
             if (pointer + self.window_size) <= data_length:
                 part_data = data.loc[pointer:pointer + self.window_size - 1,] 
-#                 part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
-                part_data_value = part_data.values
+                part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
+#                 part_data_value = part_data.values
                 Xpred.append(part_data_value)
                 date_.append(dates[pointer + self.window_size - 1])
 
