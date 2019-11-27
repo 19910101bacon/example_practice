@@ -369,7 +369,8 @@ class MultiSequence(SequenceBase):
         while (pointer + self.window_size) <= data_length:
             if (pointer + self.window_size + self.target_length) <= data_length:
                 part_data = data.loc[pointer:pointer + self.window_size - 1,] 
-                part_data_value = list(chain(*part_data.values.tolist())) #np.array([list(chain(*part_data.values.tolist()))]).tolist()
+                part_data_value = list(chain(*part_data.values.tolist())) 
+#                 part_data_value = np.array([list(chain(*part_data.values.tolist()))]).tolist()
 #                 part_data_value = part_data.values
                 X.append(part_data_value)
 

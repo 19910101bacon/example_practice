@@ -17,7 +17,9 @@ import pickle
 import warnings
 from sklearn.svm import SVC
 from sklearn import metrics
-warnings.filterwarnings("ignore", category=FutureWarning, module="sklearn", lineno=196)
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
+warnings.filterwarnings("ignore")
 
 class Predictor(object):
     def __init__(self,symbol:str,target_length:int,target_theme:str):
@@ -234,12 +236,13 @@ def final_model(X:np.array,y:np.array,learn_rate:float,dropout:float):
 
 def model_selector(ticker:str,window_sizes:list,target_length:int,target_theme:str,verbose=0,column = []):
     best_model = None
-    best_training_F1 = 0
+    best_score = 0
+    best_training_score = 0
     best_training_precision = 0
     best_training_recall = 0
-    best_test_F1 = 0
-    best_test_precision = 0
-    best_test_recall = 0              
+    best_test_score = 0
+    best_test_precision = 0 
+    best_test_recall = 0            
     best_window_size = 0
     best_score = 0
     counter = 1
@@ -255,61 +258,85 @@ def model_selector(ticker:str,window_sizes:list,target_length:int,target_theme:s
         seq_obj = MultiSequence(ticker,window_size,target_length,target_theme, column)
         X_train,y_train,X_test,y_test = split_data(seq_obj)
         
+        y_train = np.array([list(chain(*y_train.tolist()))]).tolist()[0]
+        y_test = np.array([list(chain(*y_test.tolist()))]).tolist()[0]
+        
+        def bacon_F1_scoring(y_true, y_predict, verbose = False, detail_mode = False):
+            table = pd.crosstab(np.array(y_true), y_predict, rownames = ['x'], colnames = ['y'])
+            try:
+                predict_1 = table.loc[:,1].tolist()
+                precision = predict_1[1]/np.sum(predict_1)
+                true_1 = table.loc[1,:].tolist()
+                recall = true_1[1]/np.sum(true_1) 
+                scoring = precision**10*recall
+            except:
+                scoring = 0
+                precision = 0
+                recall = 0
 
-        model = SVC(probability=True, gamma='auto', class_weight={1: 10})  
-        y_train_true = list(chain(*y_train.tolist()))
-#         print(len(X_train))
-#         print(len(y_train_true))
-#         print(y_train_true)
-        y_test_true = list(chain(*y_test.tolist()))
-        model.fit(X_train,y_train_true)
+            if verbose is True:
+                display(table)
+            if detail_mode is True:
+                return {'scoring' : scoring, 'precision' : precision, 'recall' : recall}
+            else:
+                return scoring
+
+        baconF1= make_scorer(bacon_F1_scoring, greater_is_better=True)
+        
+        param_grid = {'C': [0.1, 0.5, 1, 5, 10, 15, 20, 100, 150, 175, 200],
+                      'gamma': [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 4, 5, 10], }
+        clf = GridSearchCV(SVC(kernel='rbf'), param_grid, scoring = baconF1)
+        clf.fit(X_train, y_train)
+
+        best_C=clf.best_estimator_.C
+        best_gamma=clf.best_estimator_.gamma
+
+        model = SVC(kernel='rbf', gamma=best_gamma, C=best_C)
+        
+    
+#         model = SVC(probability=True, gamma='auto', class_weight={1: 10})  
+#         y_train_true = list(chain(*y_train.tolist()))
+#         y_test_true = list(chain(*y_test.tolist()))
+        model.fit(X_train, y_train)
         y_train_pred = model.predict(X_train)
-#         print(len(y_train_pred))
-#         print(y_train_pred)
-#         print('\n')
         y_test_pred = model.predict(X_test)
-#         print(len(y_test_pred))
-#         print(y_test_pred)
-        df = pd.DataFrame({'y_test_true' : y_test_true, 'y_test_pred' : y_test_pred})
-#         print(df)
-#         print(metrics.precision_score(y_test_true, y_test_pred, average=None))
+        score_train = bacon_F1_scoring(y_train, y_train_pred, detail_mode = True)
+        score_test = bacon_F1_scoring(y_test, y_test_pred, detail_mode = True)
         
-        F1_train = metrics.f1_score(y_train_true, y_train_pred, average='weighted')
-        precision_train = metrics.precision_score(y_train_true, y_train_pred, average='micro')
-        recall_train = metrics.recall_score(y_train_true, y_train_pred, average='micro')
+#         df = pd.DataFrame({'y_test_true' : y_test, 'y_test_pred' : y_test_pred})
+#         F1_train = metrics.f1_score(y_train_true, y_train_pred, average='weighted')
+#         precision_train = metrics.precision_score(y_train_true, y_train_pred, average='micro')
+#         recall_train = metrics.recall_score(y_train_true, y_train_pred, average='micro')
         
-        F1_test = metrics.f1_score(y_test, y_test_pred, average='weighted')
-        precision_test = metrics.precision_score(y_test_true, y_test_pred, average='micro')
-        recall_test = metrics.recall_score(y_test_true, y_test_pred, average='micro')
+#         F1_test = metrics.f1_score(y_test, y_test_pred, average='weighted')
+#         precision_test = metrics.precision_score(y_test_true, y_test_pred, average='micro')
+#         recall_test = metrics.recall_score(y_test_true, y_test_pred, average='micro')
        
-        score = (F1_train + F1_test)/2
-
-        
+        summary_score = (score_train['scoring'] + 5*score_test['scoring'])/6
         if verbose==1:
-            msg = " > Window size: {0:} Score: {1:.4f}"
-            msg+= "training_F1: {2:.4f} training_precision: {3:.4f}  training_recall: {4:.4f} test_F1: {5:.4f} testing_precision: {6:.4f}  testing_recall: {7:.4f}"
-#             msg = " > Learn rate: {0:.4f} Dropout: {1:.2f}"
-#             msg+= " Epoch: {2:} Training loss: {3:.4f} Training acc: {4:.4f} Testing loss: {5:.4f} Testing acc: {6:.4f} Score : {7:.4f}"
-            msg = "{0:2}".format(str(counter))+"  "+msg.format(window_size,score,F1_train,precision_train,recall_train,F1_test,precision_test,recall_test)
+            msg = " > Window size: {0:} Score: {1:.7f} , training score: {2:.7f} , testing score: {3:.7f}"
+            msg+= " training_precision: {4:.4f}  training_recall: {5:.4f} testing_precision: {6:.4f}  testing_recall: {7:.4f}"
+            msg = "{0:2}".format(str(counter))+"  "+msg.format(window_size,summary_score,score_train['scoring'],score_test['scoring'],
+                                                              score_train['precision'], score_train['recall'], score_test['precision'], score_test['recall'])
             print(msg)
 
-        if score > best_score :
+        if summary_score > best_score :
             best_model = model
             best_window_size = window_size
-            best_score = score
-            best_training_F1 = F1_train
-            best_training_precision = precision_train
-            best_training_recall = recall_train
-            best_test_F1 = F1_test
-            best_test_precision = precision_test
-            best_test_recall = recall_test                 
+            best_score = summary_score
+            best_training_score = score_train['scoring']
+            best_training_precision = score_train['precision']
+            best_training_recall = score_train['recall']
+            best_test_score = score_test['scoring']
+            best_test_precision = score_test['precision']
+            best_test_recall = score_test['recall']                 
         counter+=1
         
     if verbose in [1,2]:
-        print("\nFinal model selection summary for {0} with window size of {1}. Score = {2:.4f}:".format(ticker,best_window_size,best_score))
+        print("\nFinal model selection summary for {0} with window size of {1}. Score = {2:.7f}, training score: {3:.7f} , testing score: {4:.7f}".format(ticker,best_window_size,best_score,best_training_score,best_test_score))
         print('-' * 60)
-        msg = "training_F1: {0:.4f} training_precision: {1:.4f}  training_recall: {2:.4f} test_F1: {3:.4f} testing_precision: {4:.4f}  testing_recall: {5:.4f}"
-        msg = msg.format(best_training_F1,best_training_precision,best_training_recall,best_test_F1,best_test_precision,best_test_recall)
+        msg = "training_precision: {0:.4f}  training_recall: {1:.4f} testing_precision: {2:.4f}  testing_recall: {3:.4f}"
+        msg = msg.format(score_train['precision'], score_train['recall'], score_test['precision'], score_test['recall'])
 #         msg = " Epoch: {2:} Training loss: {3:.4f} Training acc: {4:.4f} Testing loss: {5:.4f} Testing acc: {6:.4f} Score : {7:.4f}"
 #         msg = msg.format(rate,dropout, epoch, lowest_training_loss, best_training_acc, lowest_test_loss, best_test_acc, best_score)
         print(msg)
@@ -317,13 +344,14 @@ def model_selector(ticker:str,window_sizes:list,target_length:int,target_theme:s
     best_dict = {}
     best_dict["ticker"] = ticker
     best_dict['window_size'] = best_window_size
-    best_dict['score'] = float("{0:.4f}".format(best_score))
-    best_dict['training_F1'] = float("{0:.4f}".format(best_training_F1))
-    best_dict['training_precision'] = float("{0:.4f}".format(best_training_precision))
-    best_dict['training_recall'] = float("{0:.4f}".format(best_training_recall))
-    best_dict['test_F1'] = float("{0:.4f}".format(best_test_F1))
-    best_dict['test_precision'] = float("{0:.4f}".format(best_test_precision))
-    best_dict['test_recall'] = float("{0:.4f}".format(best_test_recall))
+    best_dict['score'] = float("{0:.7f}".format(best_score))
+    
+    best_dict['best_training_score'] = best_training_score 
+    best_dict['best_training_precision'] = best_training_precision
+    best_dict['best_training_recall'] = best_training_recall  
+    best_dict['best_test_score'] = best_test_score
+    best_dict['best_test_precision'] = best_test_precision 
+    best_dict['best_test_recall'] = best_test_recall
     best_dict['target_length'] = target_length
     best_dict['target_theme'] = target_theme
     best_dict['colname'] = column

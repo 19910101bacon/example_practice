@@ -5,12 +5,29 @@ import gc
 import sys
 
 theme = sys.argv[1]
+symbol_chunk = int(sys.argv[2]) 
+
+window_sizes = [5,6,7]
 
 stocks = companies()
 symbols = stocks['Symbol'].values.tolist()
-window_sizes = [3,4,5,6,7]
 
-for symbol in symbols:
+def chunkIt(seq, num):
+    avg = len(seq) / float(num)
+    out = []
+    last = 0.0
+
+    while last < len(seq):
+        out.append(seq[int(last):int(last + avg)])
+        last += avg
+
+    return out
+
+all_chunk_symbols = chunkIt(symbols, 10)
+nowchunk_symbols = all_chunk_symbols[symbol_chunk]
+
+
+for symbol in nowchunk_symbols:
     print('\n')
     print('---------- {0} ---------'.format(symbol))
     try:
