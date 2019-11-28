@@ -1,1 +1,0 @@
-{"ticker": "AXP", "test_error": 0.0119, "learn_rate": 0.0005, "dropout": 0.4, "epoch": 500, "train_error": 0.0106, "window_size": 4, "target_length": 2, "colname": ["normal_open_", "normal_high", "normal_low", "normal_volume", "normal_close", "normal_close_delta_1", "normal_close_delta_2", "normal_close_delta_3", "normal_returns", "normal_mfi"]}

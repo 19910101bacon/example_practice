@@ -1,1 +1,0 @@
-{"test_error": 0.0099, "learn_rate": 0.01, "dropout": 0.4, "ticker": "GOOG", "epoch": 100, "window_size": 10, "train_error": 0.0028}
