@@ -342,13 +342,16 @@ def model_selector(ticker:str,window_sizes:list,target_length:int,target_theme:s
         print(msg)
     
     best_dict = {}
-    best_dict["ticker"] = ticker
+    best_dict['ticker'] = ticker
     best_dict['window_size'] = best_window_size
+    best_dict['train_ans1_num'] = int(np.sum(y_train))
+    best_dict['train_num'] = len(y_train)
+    best_dict['test_ans1_num'] = int(np.sum(y_test))
+    best_dict['test_num'] = len(y_test)
     best_dict['score'] = float("{0:.7f}".format(best_score))
-    
-    best_dict['best_training_score'] = best_training_score 
-    best_dict['best_training_precision'] = best_training_precision
-    best_dict['best_training_recall'] = best_training_recall  
+    best_dict['best_train_score'] = best_training_score 
+    best_dict['best_train_precision'] = best_training_precision
+    best_dict['best_train_recall'] = best_training_recall  
     best_dict['best_test_score'] = best_test_score
     best_dict['best_test_precision'] = best_test_precision 
     best_dict['best_test_recall'] = best_test_recall
