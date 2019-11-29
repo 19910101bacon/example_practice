@@ -7,7 +7,7 @@ import sys
 theme = sys.argv[1]
 symbol_chunk = int(sys.argv[2]) 
 
-window_sizes = [5,6,7]
+window_sizes = [7]
 
 stocks = companies()
 symbols = stocks['Symbol'].values.tolist()

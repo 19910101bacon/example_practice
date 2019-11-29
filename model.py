@@ -283,8 +283,8 @@ def model_selector(ticker:str,window_sizes:list,target_length:int,target_theme:s
 
         baconF1= make_scorer(bacon_F1_scoring, greater_is_better=True)
         
-        param_grid = {'C': [0.1, 0.5, 1, 5, 10, 15, 20, 100, 150, 175, 200],
-                      'gamma': [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 4, 5, 10], }
+        param_grid = {'C': [0.1, 0.5, 1, 5, 10, 20, 100, 150, 200],
+                      'gamma': [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3], }
         clf = GridSearchCV(SVC(kernel='rbf'), param_grid, scoring = baconF1)
         clf.fit(X_train, y_train)
 
